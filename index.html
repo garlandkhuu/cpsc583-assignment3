@@ -171,11 +171,13 @@
             .style("text-anchor", "end")
             .text(fieldYAxis.replace(/_/g, " "));
 
+        var selectedIds = [];
+
         // draw dots
         scatterplot.selectAll(".dot")
             .data(who)
             .enter().append("circle")
-            .attr("class", d => { return "dot COUNTRY-"+d.Country + " COUNTRY-CODE-" + d.id; } )
+            .attr("class", d => { return "dot COUNTRY-"+d.Country.replace(/\s/g, '') + " COUNTRY-CODE-" + d.id; } )
             .attr("r", 3.5)
             .attr("cx", xMap)
             .attr("cy", yMap)
@@ -190,30 +192,78 @@
                 handleSelect(this, d);
             });
 
+        function plotDescriptions() {
+            scatterplot.selectAll(".desc-line").remove();
+
+            const description = scatterplot.selectAll(".desc-line")
+                .data(selectedIds);
+
+            description
+                .enter().append("text")
+                .classed("desc-line", true)
+                .attr("x", 450)
+                .attr("y", (d, i) => (12*i))
+                .text(d => (d.name + ": " + fertilityById[d.id]));
+        }
+
         function handleMouseOver(d) {
-            d3.select("body").selectAll(".COUNTRY-CODE-"+d.id)
-                .style("stroke", "red")
-                .style("stroke-width", 2);
+            if (d.id){
+                d3.select("body").selectAll(".COUNTRY-CODE-"+d.id)
+                    .style("stroke", "red")
+                    .style("stroke-width", 2);
+            }
+            else {
+                d3.select("body").selectAll(".COUNTRY-"+d.Country.replace(/\s/g, ''))
+                    .style("stroke", "red")
+                    .style("stroke-width", 2);
+            }
+
+
         }
 
         function handleMouseOut(d) {
-            d3.select("body").selectAll(".COUNTRY-CODE-"+d.id)
-                .style("stroke", "red")
-                .style("stroke-width", 0);
+            if(d.id) {
+                d3.select("body").selectAll(".COUNTRY-CODE-"+d.id)
+                    .style("stroke", "red")
+                    .style("stroke-width", 0);
+            }
+            else {
+                d3.select("body").selectAll(".COUNTRY-"+d.Country.replace(/\s/g, ''))
+                    .style("stroke", "red")
+                    .style("stroke-width", 0);
+            }
         }
 
         function handleSelect(element, d) {
             const selection = d3.select(element);
-            const allSelection = d3.select("body").selectAll(".COUNTRY-CODE-"+d.id);
+            const allSelection = (d.id) ? d3.select("body").selectAll(".COUNTRY-CODE-"+d.id) : d3.select("body").selectAll(".COUNTRY-"+d.Country.replace(/\s/g, ''));
             const currentClass = selection.attr("class");
 
             if (currentClass.includes("selected")){
                 allSelection.classed("selected", false);
+                selectedIds = selectedIds.filter((item) => {
+                    return !(item.id === d.id)
+                });
+                plotDescriptions(d);
             }
             else {
                 allSelection.classed("selected", true);
+                const selectedCountry = {
+                    name: d.Country || d.properties.name,
+                    id: d.id
+                };
+
+                selectedIds.push(selectedCountry);
+
+                plotDescriptions(d);
             }
         }
+
+        scatterplot.append("text")
+            .attr("x", 450)
+            .attr("y", -14)
+            .attr("font-size", "14px")
+            .text("Selected Countries' Fertility Rate");
 
         // draw legend
         var legend = scatterplot.append("g").attr("class", "legend-group").selectAll(".legend")
